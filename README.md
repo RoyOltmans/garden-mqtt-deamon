@@ -154,3 +154,7 @@ The valve state will be reported for all valve every 5 minutes.
 This all van be optimized with more configuration items etc less hard coded (it's a quick and dirty project). I am thinking of porting the whole setup to a ESP in the future (keep you posted).
 
 Hope this project helps with your garden automation. Offcourse this could be combined with miflora to control the valves via home-automation.
+
+# Home Assistant example overview
+
+![home_assistant](media/garden-mqtt-control.png)
