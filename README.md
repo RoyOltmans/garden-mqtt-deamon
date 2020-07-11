@@ -1,6 +1,8 @@
 # garden-mqtt-deamon
 This repo is a fork of the original work of RoyOltmans. Only instructions have been updated for a raspberry pi 3.
 
+
+
 Garden control BLE Python rev 0.2
 
 Description: Lightweight BLE mqtt deamon controller for garden with an Rasberry PI
@@ -78,7 +80,6 @@ Afterwards try connecting by using the following command:
 ```
 gatttool -I
 [                 ][LE]> connect 01:02:03:04:09:B6
-
 ```
 
 Afterwards you get into a prompt, execute the following command:
