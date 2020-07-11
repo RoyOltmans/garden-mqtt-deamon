@@ -1,11 +1,11 @@
 # garden-mqtt-deamon
+This repo is a fork of the original work of RoyOltmans. Only instructions have been updated for a raspberry pi 3.
+
 Garden control BLE Python rev 0.2
 
 Description: Lightweight BLE mqtt deamon controller for garden with an Rasberry PI
 
 All rights of the device are owned by Aqualin
-
-This is an fork and extension with bugfixes of my aqualin project including miflora reading for zones.
 
 This combination gives you the insight of zones (multiple miflora sensors) and can activate water delivery.
 
@@ -14,26 +14,8 @@ Kipe for building miplant https://github.com/kipe/miplant, I reused his project 
 
 **Usage of this project is on your own risk.**
 
-# Motivation
-A long while ago I wrote these two projects to get to this project.
-
-See this repository https://github.com/RoyOltmans/aqualin
-And this repository https://github.com/RoyOltmans/aqualin-mqtt-deamon/
-
-I always intended to combine these two with 7 miflora's I own. 
-I found this project from Kipe: https://github.com/kipe/miplant problem was I wanted this to be managed from one device.
-The scanning procedures of the aqualin blocked the miflora scans and vice versa.
-
-So two years ago I decided to combine both to one setup so they cannot intervene with eachother.
-I allready created multi threaded proces on aqaulin making it simple to combine it with miflora.
-Meanwhile I finished it a year ago I never got to upload the project.
-
-I was asked to create some valve insight so I decided to update the code and made it a little more robust (it's still quick and dirty).
-
-Now I decided to upload the whole project.
-
 # Requirements
-This project has been build on linux raspbian on a Raspberry Pi Zero W.
+This project has been build on linux raspbian on a Raspberry Pi 3B.
 
 0) Upgrade and update all repositories:
 
@@ -54,7 +36,7 @@ Install the required tool and libraries to support BLE:
 
 2) A MQTT bus is needed install a MQTT bus (for example mosquitto) 
 ```
-    $  sudo apt-get install mosquitto mosquitto-clients python-mosquitto
+    $  sudo apt-get install mosquitto mosquitto-clients
 ```
 
 Detailed description can be [found here](https://learn.adafruit.com/diy-esp8266-home-security-with-lua-and-mqtt/configuring-mqtt-on-the-raspberry-pi): 
@@ -67,16 +49,15 @@ Detailed description can be [found here](https://learn.adafruit.com/diy-esp8266-
 ```
 
 5) Install miflora requirements
-For detials see https://github.com/kipe/miplant
+For details see https://github.com/kipe/miplant
 ```
-    # There's a issue with bluepy-helper not being built in v1.0.5 in PyPi
-    #   -> install bluepy from github
-    pip install git+https://github.com/IanHarvey/bluepy.git
+    sudo apt-get install python-pip libglib2.0-dev
+    sudo pip install bluepy
 ```
 
 6) Install garden mqtt deamon
 ```
-    $  git clone https://github.com/RoyOltmans/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
+    $  sudo git clone https://github.com/RoyOltmans/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
 ```
 
 7) We will need the MAC address(es) of the valve's, you can identify these by the following command:
@@ -95,13 +76,15 @@ A example line would be
 Afterwards try connecting by using the following command:
 
 ```
-sudo gatttool -b [01:02:03:04:09:B6 exmaple max] -I
+gatttool -I
+[                 ][LE]> connect 01:02:03:04:09:B6
+
 ```
 
 Afterwards you get into a prompt, execute the following command:
 
 ```
-char-desc
+[01:02:03:04:09:B6][LE]> char-desc
 ```
 
 This should give a long list of ID's, if this works it should be "ok".
