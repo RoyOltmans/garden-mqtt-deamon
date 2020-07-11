@@ -93,6 +93,10 @@ This should give a long list of ID's, if this works it should be "ok".
 
 Edit the config.ini via your favorite text editor (e.g. nano, vi etc). Change the mac address if you have one valve remove the whole line of mac addresses and the ','. Also change the MQTThost to the IP address or DNS name of the host running the MQTT bus (offcourse with extra details if needed).
 
+```
+sudo nano /opt/garden-mqtt-deamon/config.ini
+```
+
 # Usage
 
 Set execution for the script
