@@ -1,12 +1,10 @@
-# garden-mqtt-deamon
+# garden-mqtt-deamon rev. 0.3
 
-Garden control BLE Python3 rev 0.3
-
-Description: Lightweight BLE mqtt deamon controller for Aqualin valves and MiFlora sensors with a Rasberry Pi
+Description: Lightweight BLE mqtt deamon controller for Aqualin valves and Xiaomi Vetrug Mi Flora Plant sensors with a Rasberry Pi
 
 All rights of the device are owned by Aqualin and Xiaomi
 
-This combination gives you the insight of zones (multiple miflora sensors) and can activate water delivery.
+This tool monitors both Aqualin valves and MiFlora sensors and allows you to control the Aqualin valves. The tool uses MQTT to send and receive data, so you can use it with your favorite home automation system. An example for Home Assistant is provided. 
 
 This tool is originally developed by RoyOltmans (https://github.com/RoyOltmans/garden-mqtt-deamon), but has been modified significantly. Main improvements are
 - Code rewritten from Python 2 to Python 3
