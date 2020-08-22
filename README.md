@@ -62,7 +62,7 @@ For details see https://github.com/kipe/miplant
 
 6) Install garden mqtt deamon
 ```
-    $  sudo git clone https://github.com/Ernst79/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
+    $  sudo git clone https://github.com/RoyOltmans/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
 ```
 
 7) We will need the MAC address(es) of the valves, you can identify these by the following command:
