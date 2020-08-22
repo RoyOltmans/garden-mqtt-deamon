@@ -249,3 +249,5 @@ sensor:
 ```
 
 ![home_assistant](media/garden-home_assistant.png)
+
+![home_assistant](media/garden-mqtt-control.png)
