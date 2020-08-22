@@ -8,7 +8,7 @@
 #              receiving mqtt messages to set the Aqualin valves (on/off/timer)
 #
 # Author:      originally developed by roy.oltmans, modified by Ernst Klamer
-#
+# 
 # Created:     22-08-2020
 # Copyright:   (c) 2020 roy.oltmans, Ernst Klamer
 # Licence:     MIT License
