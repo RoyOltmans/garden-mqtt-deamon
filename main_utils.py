@@ -4,8 +4,8 @@
 #
 # Author:      roy.oltmans
 #
-# Created:     23-10-2014
-# Copyright:   (c) 2020 Ernst Klamer, roy.oltmans
+# Created:     22-08-2020
+# Copyright:   (c) 2020 roy.oltmans
 # Licence:     MIT license
 #-------------------------------------------------------------------------------
 
