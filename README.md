@@ -143,6 +143,8 @@ The status of the valves and MiFlora sensors is checked at the intervals set in 
     home/miflora/[MiFlora BLE MAC]/Light [Light in lx]
 ```
 
+Make a note of the MiFlora mac address, e.g. if you want to integrate these sensors in Home Assistant (see below). 
+
 # Automatic startup garden-mqtt-deamon with systemd
 If all runs fine, you can choose to make the garden-mqtt-deamon tool to run automatically, also after a restart, with systemd. First, create a service file.
 ```
@@ -185,7 +187,9 @@ sudo systemctl stop garden-mqtt-deamon.service
 ```
 
 # Home Assistant example overview
-To integrate the different switches and sensors in Home Assistant, you can use the following yaml configuration. Please note that a template switch is used in stead of a MQTT switch, due to the fact that you cannot send variable integers based on a template value with a MQTT switch in Home Assistant. We need this to set the timer, so we have to use the template switch in this case. input_number is used to set the timer.
+To integrate the different switches and sensors in Home Assistant, you can use the following yaml configuration. Please note that a template switch is used in stead of a MQTT switch, due to the fact that you cannot send variable integers based on a template value with a MQTT switch in Home Assistant. We need this to set the timer, so we have to use the template switch in this case. input_number is used to set the timer. 
+
+Make sure you change the mac address of the Aqualin valve (in the example 01:02:03:04:05:06) and the MiFlora sensor (in the example c4:7c:8d:6b:4f:f3) to your own mac adressess. 
 
 ```
 # Aqualin Valve switch
@@ -197,12 +201,12 @@ switch:
         turn_on:
           - service: mqtt.publish
             data_template:
-              topic: 'home/aqualin/00:35:FF:2C:C0:49/switch'
+              topic: 'home/aqualin/01:02:03:04:05:06/switch'
               payload: "{{ states('input_number.aqualin_timer') | int }}"
         turn_off:
           - service: mqtt.publish
             data_template:
-              topic: 'home/aqualin/00:35:FF:2C:C0:49/switch'
+              topic: 'home/aqualin/01:02:03:04:05:06/switch'
               payload: "0"
 
 # Aqualin Valve timer input
@@ -219,7 +223,7 @@ input_number:
 binary_sensor:
   - platform: mqtt
     name: Aqualin valvestate
-    state_topic: "home/aqualin/00:35:FF:2C:C0:49/valvestate"
+    state_topic: "home/aqualin/01:02:03:04:05:06/valvestate"
     payload_on: "on"
     payload_off: "off"
 
@@ -227,7 +231,7 @@ binary_sensor:
 sensor:
   - platform: mqtt
     name: Aqualin valvetimer
-    state_topic: "home/aqualin/00:35:FF:2C:C0:49/valvetimer"
+    state_topic: "home/aqualin/01:02:03:04:05:06/valvetimer"
 
 # Mi Flora sensors
   - platform: mqtt
