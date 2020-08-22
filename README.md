@@ -33,23 +33,23 @@ This project has been build on linux raspbian on a Raspberry Pi 3B.
        sudo apt-get dist-upgrade
 ```
 
-1) Firstly install necessay utils
+1) Firstly install necessary utils
 
-Install the required tool and libraries to support BLE:
+Install the required tools and libraries to support BLE:
 ```
     $  sudo apt-get install git bluetooth bluez
        sudo apt-get install python3
        sudo apt-get install python3-pip
 ``` 
 
-2) A MQTT bus is needed install a MQTT bus (for example mosquitto) 
+2) A MQTT broker is required. Install a MQTT broker (for example mosquitto) 
 ```
     $  sudo apt-get install mosquitto mosquitto-clients
 ```
 
 Detailed description can be [found here](https://learn.adafruit.com/diy-esp8266-home-security-with-lua-and-mqtt/configuring-mqtt-on-the-raspberry-pi): 
 
-3) Install necessary supporting libraries for the project
+3) Install necessary python packages for the project
 ```
     $  sudo pip3 install paho-mqtt
        sudo pip3 install schedule
@@ -67,11 +67,11 @@ For details see https://github.com/kipe/miplant
     $  sudo git clone https://github.com/Ernst79/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
 ```
 
-7) We will need the MAC address(es) of the valve's, you can identify these by the following command:
+7) We will need the MAC address(es) of the valves, you can identify these by the following command:
 ```
     $  sudo hcitool lescan
 ``` 
-write down the mac address of the valve(s) eg 01:02:03:04:05:06
+write down the mac address of the valve(s) eg 01:02:03:04:05:06. You need the ones with Spray-Mist. 
 
 A example line would be
 ```
@@ -111,7 +111,7 @@ Set execution for the script
     $  sudo chmod +x /opt/garden-mqtt-deamon/garden-mqtt-deamon.py
 ```
 
-Execute the script to test if it works. 
+Execute the script to test if it works (You can exit the Python script by pressing ctrl+c).
 ```
     $  cd /opt/garden-mqtt-deamon
        python3 garden-mqtt-deamon.py
@@ -132,7 +132,7 @@ The aqualin valve will automatically stop after the set time. If you want to sto
 mosquitto_pub -h [MQTT Host] -t home/aqualin/[Aquilin BLE MAC]/switch -m 0
 ```
 
-The status of the valves and MiFlora sensors is checked at the intervals set in the 'config.ini' file and for the Aqualin valves, right after a switch command (to verify that is has been set correctly). The response of the valves will be send via the following MQTT path with the Message payload below:
+The status of the valves and MiFlora sensors is checked at the intervals set in the 'config.ini' file and for the Aqualin valves, also right after a switch command (to verify that is has been set correctly). The response of the valves will be send via the following MQTT path with the Message payload below:
 ```
     home/aqualin/[Aquilin BLE MAC]/valvestate [on/off]
     home/aqualin/[Aquilin BLE MAC]/valvetimer [timer duration]
@@ -143,10 +143,49 @@ The status of the valves and MiFlora sensors is checked at the intervals set in 
     home/miflora/[MiFlora BLE MAC]/Light [Light in lx]
 ```
 
-Hope this project helps with your garden automation. 
+# Automatic startup garden-mqtt-deamon with systemd
+If all runs fine, you can choose to make the garden-mqtt-deamon tool to run automatically, also after a restart, with systemd. First, create a service file.
+```
+sudo nano /etc/systemd/system/garden-mqtt-deamon.service
+```
+
+Add the following content to the file
+
+```
+[Unit]
+Description=Aqualin MQTT service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u garden-mqtt-deamon.py
+WorkingDirectory=/opt/garden-mqtt-deamon
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Now reload systemd configuration and start the the service
+```
+sudo systemctl daemon-reload 
+sudo systemctl start garden-mqtt-deamon.service
+```
+
+You can check the status with 
+```
+sudo systemctl status garden-mqtt-deamon.service
+```
+
+You can stop the service with 
+```
+sudo systemctl stop garden-mqtt-deamon.service
+```
 
 # Home Assistant example overview
-To integrate the different switches and sensors in Home Assistant, you can use the following yaml configuration. Please note that a template switch is used in stead of a mqtt switch, due to the fact that you cannot send integers with an mqtt switch. The input_number is used to set the timer. 
+To integrate the different switches and sensors in Home Assistant, you can use the following yaml configuration. Please note that a template switch is used in stead of a MQTT switch, due to the fact that you cannot send variable integers based on a template value with a MQTT switch in Home Assistant. We need this to set the timer, so we have to use the template switch in this case. input_number is used to set the timer.
 
 ```
 # Aqualin Valve switch
@@ -209,4 +248,4 @@ sensor:
     unit_of_measurement: 'lx'
 ```
 
-![home_assistant](media/garden-mqtt-control.png)
+![home_assistant](media/garden-home_assistant.png)
