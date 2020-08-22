@@ -6,16 +6,16 @@ All rights of the device are owned by Aqualin and Xiaomi
 
 This tool monitors both Aqualin valves and MiFlora sensors and allows you to control the Aqualin valves. The tool uses MQTT to send and receive data, so you can use it with your favorite home automation system. An example for Home Assistant is provided. 
 
-This tool is originally developed by RoyOltmans (https://github.com/RoyOltmans/garden-mqtt-deamon), but has been modified significantly. Main improvements are
+This tool is originally developed by RoyOltmans (https://github.com/RoyOltmans/garden-mqtt-deamon), and has been modified significantly in v0.3 by Ernst79. Main improvements in v0.3 are
 - Code rewritten from Python 2 to Python 3
-- Simplyfied mqtt message structure to make a clear distinction between switching commands and status commands.
+- Simplyfied mqtt message structure to make a clear distinction between switching commands and status commands (breaking change, modified MQTT topics)
 - Better error handling (prevents hanging when not able to connect to valve and/or mqtt server)
 - Added option to use username/password for mqtt server
-- Added a different scan interval when the valve is "on", to be able to see the timer counting down. 
-- Updated the documentation, including Home Assistant configuration
+- Added a different scan interval when the valve is "on", to be able to see the timer counting down (breaking change, modify config.ini).
+- Updated the documentation, including Home Assistant configuration and systemd configuration
 
 Many thanks to:
-RoyOltmans for building the initial version of garden-mqtt-deamon (https://github.com/RoyOltmans/garden-mqtt-deamon), I reused a major part of his code. 
+RoyOltmans for building the initial version of garden-mqtt-deamon (https://github.com/RoyOltmans/garden-mqtt-deamon), Ernst79 reused a major part of his code to update it to Python 3.
 Kipe for building miplant https://github.com/kipe/miplant, RoyOltmans reused his project and combined it with his aqaulin project.
 
 **Usage of this project is on your own risk.**
