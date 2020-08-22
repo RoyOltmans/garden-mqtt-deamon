@@ -1,6 +1,6 @@
 # garden-mqtt-deamon
 
-Garden control BLE Python rev 0.2
+Garden control BLE Python3 rev 0.3
 
 This tool is originally developed by RoyOltmans (https://github.com/RoyOltmans/garden-mqtt-deamon), but has been modified significantly. Main improvements are
 - Code rewritten from Python 2 to Python 3
