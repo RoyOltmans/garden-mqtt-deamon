@@ -91,7 +91,7 @@ Afterwards you get into a prompt, execute the following command:
 [01:02:03:04:09:B6][LE]> char-desc
 ```
 
-This should give a long list of ID's, if this works it should be "ok".
+This should give a long list of ID's, if this works it should be "ok". type 'exit' to quit gattool. 
 
 8) Configure the config.ini
 
