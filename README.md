@@ -55,19 +55,19 @@ Detailed description can be [found here](https://learn.adafruit.com/diy-esp8266-
        sudo pip3 install schedule
 ```
 
-5) Install miflora requirements
+4) Install miflora requirements
 For details see https://github.com/kipe/miplant
 ```
     sudo apt-get install libglib2.0-dev
     sudo pip3 install bluepy
 ```
 
-6) Install garden mqtt deamon
+5) Install garden mqtt deamon
 ```
     $  sudo git clone https://github.com/Ernst79/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
 ```
 
-7) We will need the MAC address(es) of the valves, you can identify these by the following command:
+6) We will need the MAC address(es) of the valves, you can identify these by the following command:
 ```
     $  sudo hcitool lescan
 ``` 
@@ -93,7 +93,7 @@ Afterwards you get into a prompt, execute the following command:
 
 This should give a long list of ID's, if this works it should be "ok".
 
-8) Configure the config.ini
+7) Configure the config.ini
 
 Edit the config.ini via your favorite text editor (e.g. nano, vi etc). Change the mac address if you have one valve remove the whole line of mac addresses and the ','. Also change the MQTThost to the IP address or DNS name of the host running the MQTT server and change the port, username and password.
 
