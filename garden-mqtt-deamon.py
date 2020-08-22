@@ -1,21 +1,21 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
 # ---------------------------------------------------------------------------------------
-# Name:        garden_mqtt_servive service
-# Purpose:     listening to MQTT posts and sending a request to a Aqualin celenoid valve
-#              determening batteru status of every aqualin unit connected
-#              determining status of mi flora sensors
+# Name:        aqualin_mqtt_servive service
+# Purpose:     sending mqtt messages with status of Aqualin valves (on/off/timer)
+#              sending mqtt messages with status of MiFlora sensors 
+#              receiving mqtt messages to set the Aqualin valves (on/off/timer)
 #
-# Author:      roy.oltmans
+# Author:      ernst klamer, originally developed by roy.oltmans
 #
-# Created:     18-11-2018
-# Altered:     28-04-2020
-# Copyright:   (c) roy.oltmans 2018
-# Licence:     <your licence>
+# Created:     22-08-2020
+# Copyright:   (c) 2020 Ernst Klamer, roy.oltmans
+# Licence:     MIT License
 # ---------------------------------------------------------------------------------------
+
 from bluepy import btle
-from Queue import Queue
+from queue import Queue
 from threading import Thread
 import paho.mqtt.client as mqtt
 import main_utils, os, sys, syslog, time, schedule, binascii, miplant_lib
@@ -26,15 +26,16 @@ trace = tools.fetchConfig().get('GENERAL', 'errortrace')
 bleHandle = tools.fetchConfig().get('AQUALIN', 'bleHandle')
 valuebase = tools.fetchConfig().get('AQUALIN', 'valueBase')
 waittime = tools.fetchConfig().get('AQUALIN', 'waittime')
-location = tools.fetchConfig().get('AQUALIN', 'location')
 devicemaclist = tools.fetchConfig().get('AQUALIN', 'macaddresslist')
 stdwatertimer = tools.fetchConfig().get('AQUALIN', 'stdwatertimer')
-intvalveinterval = int(tools.fetchConfig().get('AQUALIN','valve_interval'))
+intvalveintervalon = int(tools.fetchConfig().get('AQUALIN','valve_interval_on'))
+intvalveintervaloff = int(tools.fetchConfig().get('AQUALIN','valve_interval_off'))
 strmqtthost = tools.fetchConfig().get('MQTT', 'Host')
 intmqttport = int(tools.fetchConfig().get('MQTT', 'Port'))
+strmqttusername = tools.fetchConfig().get('MQTT', 'Username')
+strmqttpassword = tools.fetchConfig().get('MQTT', 'Password')
 mqttbasepath_aqualin = tools.fetchConfig().get('MQTT', 'mqttbasepath_aqualin')
 mqttbasepath_miflora = tools.fetchConfig().get('MQTT', 'mqttbasepath_miflora')
-mqttbasepath = tools.fetchConfig().get('MQTT', 'mqttbasepath')
 intmiflorainterval = int(tools.fetchConfig().get('MIFLORA','miflora_interval'))
 
 # Set up some global variables
@@ -43,168 +44,62 @@ num_fetch_threads = 2
 mqtt_Queue = Queue()
 battery_Queue = Queue()
 deviceblelock = False
-devstatus = []
 
 
 def on_connect(client, userdata, flags, rc):  # The callback for when the client receives a response from the server.
+    syslog.syslog("MQTT: Connected with result code " + str(rc))
     if trace:
-        print "MQTT: Connected NOK with result code " + str(rc)
+        print("MQTT: Connected with result code " + str(rc))
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
-    syslog.syslog("MQTT: Connected OK with result code " + str(rc))
-    client.subscribe('home/#')
+    client.subscribe(mqttbasepath_aqualin+'#')
 
 
 def on_message(client, userdata, msg):  # When a message is received on the MQTT bus
     if 'aqualin' in msg.topic.split("/"):
-        state = msg.payload.split(",")[0]
-        if 'set' in msg.topic.split("/"):  # check if the req is applicable
-            if state == 'on':  # check kind of request
-                timervalue = msg.payload.split(",")[1]
-                if timervalue <= 0:
-                    timervalue = stdwatertimer
-                devstatus.append(msg.topic.split("/")[2])
-            elif state == 'off':
+        if 'switch' in msg.topic.split("/"):  # check kind of request
+            timervalue = int(msg.payload)       
+            if timervalue <= 0:
+                status = 'off'
                 timervalue = 00
-		devstatus.remove(msg.topic.split("/")[2])
-        if 'status' in msg.topic.split("/"):  # check if status req is applicable
-            if msg.topic.split("/")[2] in devstatus:
-                client.publish(mqttbasepath_aqualin + msg.topic.split("/")[2] + '/power','on')
-            else:
-                client.publish(mqttbasepath_aqualin + msg.topic.split("/")[2] + '/power','off')
-            if state == 'check':
-                runbatterycheck()
-	mqtt_Queue.put((state, timervalue, msg.topic.split("/")[2]))
-        mqtt_Queue.qsize()
-        state = ''
-    elif 'miflora':
+                print("Message received to set valve to off ({:d} minutes)".format(timervalue))
+            elif timervalue > 0:
+                status = 'on'
+                print("Message received to set valve to on ({:d} minutes)".format(timervalue))
+            mqtt_Queue.put((status,timervalue,msg.topic.split("/")[2]))
+            mqtt_Queue.qsize()
+    elif 'miflora' in msg.topic.split("/"):
         if 'status' in msg.topic.split("/"):
             if str(msg.payload) == 'check':
                 runmiflora()
 
 
-def connectbledevice(devicemac):
-    global deviceblelock
-    retry = 0
-    frstblockloop = True
-    conn = btle.Peripheral()
-    while True:
-        if not deviceblelock:
-            deviceblelock = True
-            try:
-                if trace:
-                    print "Connected to Aqualin " + str(devicemac)
-                conn.connect(str(devicemac))
-                frstblockloop = True
-                return conn
-            except btle.BTLEException as ex:
-                if trace:
-                    print "Unable to connect to:" + str(devicemac)
-                connectbledevice(str(devicemac))
-        else:
-            if frstblockloop:
-                print "Device Blocked Waiting"
-                frstblockloop = False
-            else:
-                print "."
-        if trace:
-            print "BLE locked"
-            print "Retry number: " + str(retry)
-        if retry == 4:
-            conn.disconnect()
-            retry = 0
-            deviceblelock = False
-            return False
-        retry += 1
-        time.sleep(5)
-
-def runworkerbledevicestate():
+def runworkerbledevice():
+    publishvalvestate()
     while True:
         queuevalues = mqtt_Queue.get()
-        if trace:
-            print queuevalues
-            setblerequest(queuevalues[0], queuevalues[2], bleHandle, getblevalue(queuevalues[0], queuevalues[1]))
+        changestate = queuevalues[0]
+        changetimer = queuevalues[1]
+        devicemac = queuevalues[2]
+        try:
             # Initialize ble req
+            setblerequest(changestate, devicemac, bleHandle, getblecode(changestate, changetimer))
             if trace:
-                print "BLE instruction send..."
+                print("BLE instruction processed...")
+                print("Valve state is set to " + changestate + " (" + str(changetimer) + " minutes)")
+        except:
+            print("BLE instruction request failed")
+            pass
+        # Get and publish the state from the valve
+        publishvalvestate()            
 
-def runvalvecheck():
-    global deviceblelock
-    for i, devicemac in enumerate(devicemaclist):
-        if deviceblelock == False:
-            device = connectbledevice(str(devicemac))
-            intsolenoidstate = getsolenoidvalve(devicemac)
-            if intsolenoidstate <= 0:
-                strvalvestate = 'off'
-            else:
-                strvalvestate = 'on'
-            client.publish(mqttbasepath + str(devicemac) + '/valvestate', strvalvestate)  # publish
-            if trace:
-                print "Valve state is " + strvalvestate + " for device " + str(devicemac)
-            time.sleep(int(waittime))
-            device.disconnect()
-            deviceblelock = False
-        else:
-            time.sleep(int(waittime))
 
-def runbatterycheck():
-    global deviceblelock
-    for i, devicemac in enumerate(devicemaclist):
-        while True:
-            if not deviceblelock:
-                device = connectbledevice(str(devicemac))
-                strbatstatus = str(binascii.b2a_hex(device.readCharacteristic(0x0081)).decode('utf-8'))
-                client.publish(mqttbasepath_aqualin + str(devicemac) + '/battery', strbatstatus)  # publish
-                if trace:
-                    print "Battery status " + str(strbatstatus) + "% of device " + str(devicemac)
-                time.sleep(int(waittime))
-                device.disconnect()
-                deviceblelock = False
-                break
-            time.sleep(int(waittime))
-
-def setblerequest(status, devicemac, bleHandle, bleValue):
-    global deviceblelock
-    if trace:
-        print "Connecting " + devicemac + "..."
-    while True:
-        if not deviceblelock:
-            device = connectbledevice(str(devicemac))
-            device.writeCharacteristic(0x0073, bleValue, withResponse=True)
-            if trace:
-                print "Value parsed " + str(bleValue) + " seconds..."
-            time.sleep(int(waittime))
-            if trace:
-                print "Wait " + str(waittime) + " seconds..."
-            device.disconnect()
-            client.publish(mqttbasepath_aqualin + str(devicemac) + '/command/executed', str(status) + ',' + str(bleValue.encode("hex")))  # publish
-            deviceblelock = False
-            break
-        time.sleep(int(waittime))
-
-def getsolenoidvalve(devicemac):
-    global deviceblelock
-    if trace:
-        print "Connecting " + devicemac + "..."    
-    if deviceblelock == False:
-        device = connectbledevice(str(devicemac))
-        if device:
-            intvalvestate = int(str(binascii.b2a_hex(device.readCharacteristic(0x0073)).decode('utf-8'))[6:10],16)
-            time.sleep(int(waittime))
-            device.disconnect()
-            deviceblelock = False
-        else:
-            return
-        return intvalvestate
-    else:
-        time.sleep(int(waittime))
-
-# transform and prepair the Value response on or off and time the valve will be active
-def getblevalue(status, timer):
+def getblecode(status, timer):  
+    # transform and prepair the mqtt request (on or off and time) to a BLE code
     valuerequest = ''  # type: str
     valuestatus = '00'
     valuecalltimer = '0000'
-    valuecalltimer = hex(int(timer)).split('x')[-1]  # decimal to hex conversion for the of time
+    valuecalltimer = hex(int(timer)).split('x')[-1]  # decimal to hex conversion for the off time
     valuecalltimer = valuecalltimer.rjust(4, '0')  # if the value is shorter than 4 digits fill them up with zeros
     if status == 'on':
         valuestatus = '01'
@@ -214,12 +109,82 @@ def getblevalue(status, timer):
     valuerequest += valuestatus
     valuerequest += valuecalltimer
     if trace:
-        print "BLE instruction: "
-        print valuerequest
-    return valuerequest.decode("hex")  # payload preperation to hex for writing to valve
+        print("BLE instruction: " + valuerequest)
+    return bytearray.fromhex(valuerequest).decode()
+
+
+def setblerequest(status, devicemac, bleHandle, bleValue):
+    # Send the BLE request code via bluetooth to the valve
+    global deviceblelock
+    if trace:
+        print("Connecting " + devicemac + "...")
+    if deviceblelock == False:
+        deviceblelock = True
+        try:
+            device = btle.Peripheral(str(devicemac))
+            bleValueByte = bleValue.encode('utf-8')
+            device.writeCharacteristic(0x0073, bleValueByte, withResponse=True)
+        except btle.BTLEDisconnectError:
+            print("Connection error when sending BLE message to valve (BTLEDisconnectError)")
+            pass
+        if trace:
+            print("Wait " + str(waittime) + " seconds...")
+        time.sleep(int(waittime))
+        device.disconnect()
+        deviceblelock = False
+    else:
+        time.sleep(5)
+        setblerequest(status, devicemac, bleHandle, bleValue)
+
+
+def publishvalvestate():
+    # Publish valve state and timer value of valve to a mqtt state message
+    for i, devicemac in enumerate(devicemaclist):
+        try:
+            intsolenoid = getvalvestate(devicemac)
+            intsolenoidstate = intsolenoid[0]
+            intsolenoidtimer = intsolenoid[1]
+            if intsolenoidstate == 0:
+                status = 'off'
+                schedule.clear('publish-valve-state')
+                schedule.every(intvalveintervaloff).seconds.do(publishvalvestate).tag('publish-valve-state')
+            elif intsolenoidstate == 1:
+                status = 'on'
+                schedule.clear('publish-valve-state')
+                schedule.every(intvalveintervalon).seconds.do(publishvalvestate).tag('publish-valve-state')
+            client.publish(mqttbasepath_aqualin + str(devicemac) + '/valvestate', status, qos=0, retain=True)
+            client.publish(mqttbasepath_aqualin + str(devicemac) + '/valvetimer', str(intsolenoidtimer), qos=0, retain=True) 
+            if trace:
+                print("Valve state is " + status + " for device " + str(devicemac) + " (" + str(intsolenoidtimer) + " minutes)")
+        except TypeError:
+            print("Valve is not available")
+        time.sleep(int(waittime))
+
+
+def getvalvestate(devicemac):
+    # Connect to valve and get state and timer value of a valve
+    global deviceblelock
+    if trace:
+        print("Connecting " + devicemac + "...")
+    if deviceblelock == False:
+        deviceblelock = True
+        try:
+            device = btle.Peripheral(str(devicemac))
+            intvalvestate = int(str(binascii.b2a_hex(device.readCharacteristic(0x0073)).decode('utf-8'))[4:6],16)
+            intvalvetimer = int(str(binascii.b2a_hex(device.readCharacteristic(0x0073)).decode('utf-8'))[6:10],16)
+            time.sleep(int(waittime))
+            device.disconnect()
+            deviceblelock = False
+            return intvalvestate, intvalvetimer
+        except btle.BTLEDisconnectError:
+            print("Connection error during connection with valve (BTLEDisconnectError)")
+            deviceblelock = False
+    else:
+        time.sleep(5)
 
 
 def runmiflora():
+    # Get MiFlora sensor data and send with MQTT
     global deviceblelock
     while True:
         if not deviceblelock:
@@ -227,59 +192,57 @@ def runmiflora():
             for plant in miplant_lib.MiPlant.discover(interface_index=0, timeout=5):
                 if trace:
                     print('--------------------------')
-                    print('Address: %s' % plant.address)
-                    print('Battery level: %i%%' % plant.battery)
-                    print('Firmware: %s' % plant.firmware)
-                    print('Temperature: %.01f °C' % plant.temperature)
-                    print('Light: %.0f lx' % plant.light)
-                    print('Moisture: %.0f%%' % plant.moisture)
-                    print('Conductivity: %.0f µS/cm' % plant.conductivity)
+                    print(('Address: %s' % plant.address))
+                    print(('Battery level: %i%%' % plant.battery))
+                    print(('Firmware: %s' % plant.firmware))
+                    print(('Temperature: %.01f °C' % plant.temperature))
+                    print(('Light: %.0f lx' % plant.light))
+                    print(('Moisture: %.0f%%' % plant.moisture))
+                    print(('Conductivity: %.0f µS/cm' % plant.conductivity))
                 # publish Battery level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/battery', plant.battery)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Battery', plant.battery, qos=0, retain=True)
                 # publish Firmware level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/Firmware', plant.firmware)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Firmware', plant.firmware, qos=0, retain=True)
                 # publish Temperature level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/Temperature', plant.temperature)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Temperature', plant.temperature, qos=0, retain=True)
                 # publish Light level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/Light', plant.light)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Light', plant.light, qos=0, retain=True)
                 # publish Moisture level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/Moisture', plant.moisture)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Moisture', plant.moisture, qos=0, retain=True)
                 # publish Conductivity level Miflora
-                client.publish(mqttbasepath_miflora + str(plant.address) + '/Conductivity', plant.conductivity)
+                client.publish(mqttbasepath_miflora + str(plant.address) + '/Conductivity', plant.conductivity, qos=0, retain=True)
             deviceblelock = False
             break
         time.sleep(int(waittime))
 
-def runworkerscheduler():
+
+def runworkerblestatus():
     while True:
         schedule.run_pending()
         time.sleep(int(waittime))
 
 
 if __name__ == '__main__':
+   
     # First thread creating Queue for state calls
-    t1 = Thread(target=runworkerbledevicestate )  # Start worker thread 1
+    t1 = Thread(target=runworkerbledevice)  # Start worker thread 1
     t1.setDaemon(True)
     t1.start()
 
-    # Setting itteration check miflora sensors status every 5 minutes
+    # Setting itteration check miflora sensors status every x minutes (where x = intmiflora)
     schedule.every(intmiflorainterval).seconds.do(runmiflora)  # for checking thread fullfillment
 
-    # Setting itteration check battery status every week on sunday and reporting on MQTT
-	#Disabled battery check due to unavalibi;ity of celenoid valves
-    #schedule.every(86400).seconds.do(runbatterycheck)  # for checking thread fullfillment
-    #schedule.every().sunday.at("23:55").do(runbatterycheck)
+    # Setting itteration check valve status every x min (where x = intvalveintervaloff) and reporting on MQTT
+    schedule.every(intvalveintervaloff).seconds.do(publishvalvestate).tag('publish-valve-state')  # for checking thread fullfillment
 
-    # Setting itteration check valve status every 6min and reporting on MQTT
-    schedule.every(intvalveinterval).seconds.do(runvalvecheck)  # for checking thread fullfillment
-
-    # Second Thread Battery status checks all devices
-    t2 = Thread(target=runworkerscheduler)  # Start worker thread
+    # Second thread status checks all devices
+    t2 = Thread(target=runworkerblestatus)  # Start worker thread 2
     t2.setDaemon(True)
     t2.start()
 
     # MQTT Startup
     client = mqtt.Client()
+    client.username_pw_set(strmqttusername, strmqttpassword)
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(strmqtthost, intmqttport, 60)
