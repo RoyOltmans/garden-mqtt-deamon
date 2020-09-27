@@ -58,7 +58,7 @@ def on_connect(client, userdata, flags, rc):  # The callback for when the client
 def on_message(client, userdata, msg):  # When a message is received on the MQTT bus
     if 'aqualin' in msg.topic.split("/"):
         if 'switch' in msg.topic.split("/"):  # check kind of request
-            timervalue = int(msg.payload)       
+            timervalue = int(msg.payload)
             if timervalue <= 0:
                 status = 'off'
                 timervalue = 00
@@ -94,7 +94,7 @@ def runworkerbledevice():
         publishvalvestate()            
 
 
-def getblecode(status, timer):  
+def getblecode(status, timer):
     # transform and prepair the mqtt request (on or off and time) to a BLE code
     valuerequest = ''  # type: str
     valuestatus = '00'
@@ -176,8 +176,8 @@ def getvalvestate(devicemac):
             device.disconnect()
             deviceblelock = False
             return intvalvestate, intvalvetimer
-        except btle.BTLEDisconnectError:
-            print("Connection error during connection with valve (BTLEDisconnectError)")
+        except (btle.BTLEDisconnectError, BrokenPipeError):
+            print("Connection error during connection with valve (BTLEDisconnectError or BrokenPipeError)")
             deviceblelock = False
     else:
         time.sleep(5)
@@ -223,7 +223,7 @@ def runworkerblestatus():
 
 
 if __name__ == '__main__':
-   
+
     # First thread creating Queue for state calls
     t1 = Thread(target=runworkerbledevice)  # Start worker thread 1
     t1.setDaemon(True)
