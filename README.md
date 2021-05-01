@@ -15,7 +15,7 @@ This tool is originally developed by RoyOltmans (https://github.com/RoyOltmans/g
 - Updated the documentation, including Home Assistant configuration and systemd configuration
 
 Many thanks to:
-RoyOltmans for building the initial version of garden-mqtt-deamon (https://github.com/RoyOltmans/garden-mqtt-deamon), Ernst79 reused a major part of his code to update it to Python 3.
+RoyOltmans for building the initial version of garden-mqtt-deamon (https://github.com/RoyOltmans/garden-mqtt-deamon), I reused a major part of his code to update it to Python 3.
 Kipe for building miplant https://github.com/kipe/miplant, RoyOltmans reused his project and combined it with his aqaulin project.
 
 **Usage of this project is on your own risk.**
@@ -40,7 +40,7 @@ Install the required tools and libraries to support BLE:
        sudo apt-get install python3-pip
 ``` 
 
-3) A MQTT broker is required. Install a MQTT broker (for example mosquitto) 
+3) A MQTT broker is required. Install a MQTT broker (for example mosquitto) if you do not have one yet
 ```
     $  sudo apt-get install mosquitto mosquitto-clients
 ```
@@ -62,7 +62,7 @@ For details see https://github.com/kipe/miplant
 
 6) Install garden mqtt deamon
 ```
-    $  sudo git clone https://github.com/RoyOltmans/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
+    $  sudo git clone https://github.com/Ernst79/garden-mqtt-deamon.git /opt/garden-mqtt-deamon
 ```
 
 7) We will need the MAC address(es) of the valves, you can identify these by the following command:
