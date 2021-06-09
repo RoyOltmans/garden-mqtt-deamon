@@ -40,7 +40,7 @@ class MiPlant(object):
             True if the data was successfully received, otherwise False.
         '''
         try:
-            print "Connected"
+            print("Connected")
             peripheral = btle.Peripheral(self.address, iface=self.interface_index)
             peripheral.writeCharacteristic(0x33, bytearray([0xA0, 0x1F]), withResponse=True)
 
@@ -54,7 +54,7 @@ class MiPlant(object):
             self._moisture = received_bytes[7]
             self._conductivity = received_bytes[9] * 256 + received_bytes[8]
             peripheral.disconnect()
-            print "Disconnected"
+            print("Disconnected")
             return True
         except:
             return False
